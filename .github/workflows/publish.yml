@@ -1,60 +1,38 @@
-name: Publish
+name: Build AlexRetro APK
 
 on:
-  push:
-    tags:
-      - "*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-
   build:
-    name: Build APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Download project
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
+          distribution: temurin
+          java-version: "17"
 
-      - name: Create release keystore
-        run: |
-          echo "${{ secrets.RELEASE_KEYSTORE }}" > release.keystore.asc
-          gpg -d --passphrase "${{ secrets.RELEASE_KEYSTORE_PASSPHRASE }}" --batch release.keystore.asc > release.jks
+      - name: Set up Android
+        uses: android-actions/setup-android@v3
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Build test APK
+        run: bash ./gradlew :lemuroid-app:assembleFreeDynamicDebug --no-daemon --stacktrace
 
-      - name: Run Assemble Artifact
-        run: ./gradlew assembleFreeDynamic
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3.1.0
+      - name: Save APK
+        uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: lemuroid-app/build/outputs/apk/freeDynamic/release/lemuroid-app-free-dynamic-release.apk
-
-  publish_apk:
-    name: Publish APK on Github
-    needs: [ build ]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v3.0.0
-        with:
-          name: apk
-
-      - name: Create pre-release
-        uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: true
-          title: "Pre-release"
-          files: lemuroid-app-free-dynamic-release.apk
+          name: AlexRetro-test-APK
+          path: lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
