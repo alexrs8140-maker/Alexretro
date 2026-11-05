@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import com.swordfish.lemuroid.R
 import com.swordfish.lemuroid.app.shared.library.LibraryIndexScheduler
+import com.swordfish.lemuroid.app.tv.folderpicker.TVFolderPickerLauncher
 import com.swordfish.lemuroid.app.utils.android.displayErrorDialog
 import com.swordfish.lemuroid.lib.android.RetrogradeActivity
 import com.swordfish.lemuroid.lib.preferences.SharedPreferencesHelper
@@ -31,7 +32,7 @@ class StorageFrameworkPickerLauncher : RetrogradeActivity() {
             try {
                 startActivityForResult(intent, REQUEST_CODE_PICK_FOLDER)
             } catch (e: Exception) {
-                showStorageAccessFrameworkNotSupportedDialog()
+                openTVFolderPickerFallback()
             }
         }
     }
@@ -66,7 +67,17 @@ class StorageFrameworkPickerLauncher : RetrogradeActivity() {
             }
 
             startLibraryIndexWork()
+        } else if (requestCode == REQUEST_CODE_PICK_FOLDER) {
+            // Some Fire TV builds close the Android document picker immediately.
+            // Use the built-in remote-friendly folder picker instead of failing silently.
+            openTVFolderPickerFallback()
+            return
         }
+        finish()
+    }
+
+    private fun openTVFolderPickerFallback() {
+        TVFolderPickerLauncher.pickFolder(this)
         finish()
     }
 
