@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.swordfish.lemuroid.R
 
-
 @Composable
 fun CustomNameDialog(
     initialName: String,
