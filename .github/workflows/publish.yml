@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -40,3 +40,20 @@ jobs:
           path: lemuroid-app/build/outputs/apk/freeBundle/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Prepare direct-download APK
+        run: |
+          cp lemuroid-app/build/outputs/apk/freeBundle/debug/*.apk AlexRetro-FireTV.apk
+
+      - name: Publish APK for Fire TV Downloader
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view alexretro-firetv >/dev/null 2>&1; then
+            gh release upload alexretro-firetv AlexRetro-FireTV.apk --clobber
+          else
+            gh release create alexretro-firetv AlexRetro-FireTV.apk \
+              --title "AlexRetro Fire TV APK" \
+              --notes "Debug build for personal Fire TV testing. Download the APK directly from the release assets." \
+              --target "$GITHUB_SHA"
+          fi
