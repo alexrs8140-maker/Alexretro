@@ -24,8 +24,8 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Verify preinstalled Android SDK
+        run: test -d "$ANDROID_HOME" && echo "Android SDK found at $ANDROID_HOME"
 
       - name: Make Gradle executable
         run: chmod +x gradlew
