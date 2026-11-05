@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alexretro_choose_console">AlexRetro — Choose your console</string>
+    <string name="alexretro_all_consoles">All Consoles</string>
+    <string name="alexretro_consoles">Consoles</string>
+    <string name="alexretro_empty_console">No games added yet. Choose your games folder under Settings, then rescan.</string>
+</resources>

@@ -2,6 +2,8 @@ name: Build AlexRetro APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [ master ]
 
 permissions:
   contents: read
@@ -41,3 +43,38 @@ jobs:
           path: lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
           if-no-files-found: error
           retention-days: 7
+
+  publish-preview:
+    needs: build
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'alexretro-console-profiles' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: AlexRetro-test-APK
+          path: apk
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find apk -type f -name '*.apk')
+          test "${#apks[@]}" -eq 1
+          cp "${apks[0]}" AlexRetro.apk
+          sha256sum AlexRetro.apk > AlexRetro.apk.sha256
+          tag="alexretro-preview-${BUILD_SHA}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$BUILD_SHA" --prerelease \
+              --title "AlexRetro console picker preview" \
+              --notes "Test APK with console profiles and All Consoles. Built from ${BUILD_SHA}. Fire TV testing is pending. Source and license are included with this release."
+          fi
+          gh release upload "$tag" AlexRetro.apk AlexRetro.apk.sha256 --clobber

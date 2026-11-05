@@ -16,6 +16,16 @@
     </fragment>
 
     <fragment
+        android:id="@+id/navigation_all_consoles"
+        android:name="com.swordfish.lemuroid.app.tv.home.TVHomeFragment"
+        android:label="@string/alexretro_all_consoles">
+        <argument
+            android:name="show_all_consoles"
+            app:argType="boolean"
+            android:defaultValue="true" />
+    </fragment>
+
+    <fragment
         android:id="@+id/navigation_search"
         android:name="com.swordfish.lemuroid.app.tv.search.TVSearchFragment"
         android:label="@string/title_search"/>
