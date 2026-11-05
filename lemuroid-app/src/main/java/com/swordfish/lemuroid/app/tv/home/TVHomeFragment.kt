@@ -2,10 +2,13 @@ package com.swordfish.lemuroid.app.tv.home
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.core.os.bundleOf
 import androidx.leanback.app.BrowseSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.ClassPresenterSelector
@@ -29,6 +32,7 @@ import com.swordfish.lemuroid.app.tv.settings.TVSettingsActivity
 import com.swordfish.lemuroid.app.tv.shared.GamePresenter
 import com.swordfish.lemuroid.app.tv.shared.TVHelper
 import com.swordfish.lemuroid.common.coroutines.launchOnState
+import com.swordfish.lemuroid.lib.library.MetaSystemID
 import com.swordfish.lemuroid.lib.library.db.RetrogradeDatabase
 import com.swordfish.lemuroid.lib.library.db.entity.Game
 import com.swordfish.lemuroid.lib.savesync.SaveSyncManager
@@ -45,6 +49,9 @@ class TVHomeFragment : BrowseSupportFragment() {
     @Inject
     lateinit var saveSyncManager: SaveSyncManager
 
+    private val showAllConsoles: Boolean
+        get() = arguments?.getBoolean("show_all_consoles", false) ?: false
+
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
         super.onAttach(context)
@@ -60,14 +67,19 @@ class TVHomeFragment : BrowseSupportFragment() {
                 when (item) {
                     is Game -> gameInteractor.onGamePlay(item)
                     is MetaSystemInfo -> {
-                        val action =
-                            TVHomeFragmentDirections.actionNavigationSystemsToNavigationGames(
-                                item.metaSystem.name,
+                        if (item.count == 0) {
+                            Toast.makeText(requireContext(), R.string.alexretro_empty_console, Toast.LENGTH_LONG).show()
+                        } else {
+                            findNavController().navigate(
+                                R.id.navigation_games,
+                                bundleOf("meta_system_id" to item.metaSystem.name),
                             )
-                        findNavController().navigate(action)
+                        }
                     }
                     is TVSetting -> {
                         when (item.type) {
+                            TVSettingType.ALL_CONSOLES ->
+                                findNavController().navigate(R.id.navigation_all_consoles)
                             TVSettingType.STOP_RESCAN ->
                                 LibraryIndexScheduler.cancelLibrarySync(
                                     requireContext().applicationContext,
@@ -97,10 +109,14 @@ class TVHomeFragment : BrowseSupportFragment() {
     ) {
         super.onViewCreated(view, savedInstanceState)
 
+        title = getString(if (showAllConsoles) R.string.alexretro_all_consoles else R.string.alexretro_choose_console)
+        headersState = HEADERS_DISABLED
+        brandColor = Color.rgb(20, 20, 20)
+        view.setBackgroundColor(Color.rgb(20, 20, 20))
         recreateAdapter(
             includeFavorites = false,
             includeRecentGames = false,
-            includeSystems = false,
+            includeSystems = true,
         )
         setOnSearchClickedListener {
             findNavController().navigate(R.id.navigation_search)
@@ -116,38 +132,17 @@ class TVHomeFragment : BrowseSupportFragment() {
     }
 
     private fun update(viewState: TVHomeViewModel.HomeViewState) {
-        val adapterHasFavorites = findAdapterById<ObjectAdapter>(FAVORITES_ADAPTER) != null
-        val adapterHasGames = findAdapterById<ObjectAdapter>(RECENTS_ADAPTER) != null
-        val adapterHasSystems = findAdapterById<ObjectAdapter>(SYSTEM_ADAPTER) != null
-
-        val favoritesChanged = adapterHasFavorites != viewState.favoritesGames.isNotEmpty()
-        val recentsChanged = adapterHasGames != viewState.recentGames.isNotEmpty()
-        val systemsChanged = adapterHasSystems != viewState.metaSystems.isNotEmpty()
-
-        if (favoritesChanged || recentsChanged || systemsChanged) {
-            recreateAdapter(
-                viewState.favoritesGames.isNotEmpty(),
-                viewState.recentGames.isNotEmpty(),
-                viewState.metaSystems.isNotEmpty(),
-            )
-        }
-
-        findAdapterById<ArrayObjectAdapter>(FAVORITES_ADAPTER)?.apply {
-            if (viewState.favoritesGames.size <= TVHomeViewModel.CAROUSEL_MAX_ITEMS) {
-                setItems(viewState.favoritesGames, LEANBACK_MULTI_DIFF_CALLBACK)
+        val counts = viewState.metaSystems.associateBy { it.metaSystem }
+        val systems =
+            if (showAllConsoles) {
+                MetaSystemID.values().sortedBy { getString(it.titleResId) }
             } else {
-                val allItems =
-                    viewState.favoritesGames.subList(0, TVHomeViewModel.CAROUSEL_MAX_ITEMS) +
-                        listOf(TVSetting(TVSettingType.SHOW_ALL_FAVORITES))
-                setItems(allItems, LEANBACK_MULTI_DIFF_CALLBACK)
+                listOf(MetaSystemID.NES, MetaSystemID.SNES, MetaSystemID.N64, MetaSystemID.GBA)
             }
-        }
-
-        findAdapterById<ArrayObjectAdapter>(RECENTS_ADAPTER)
-            ?.setItems(viewState.recentGames, LEANBACK_GAME_DIFF_CALLBACK)
-
-        findAdapterById<ArrayObjectAdapter>(SYSTEM_ADAPTER)
-            ?.setItems(viewState.metaSystems, LEANBACK_SYSTEM_DIFF_CALLBACK)
+        val items: List<Any> =
+            systems.map { counts[it] ?: MetaSystemInfo(it, 0) } +
+                if (showAllConsoles) emptyList() else listOf(TVSetting(TVSettingType.ALL_CONSOLES))
+        findAdapterById<ArrayObjectAdapter>(SYSTEM_ADAPTER)?.setItems(items, LEANBACK_MULTI_DIFF_CALLBACK)
 
         findAdapterById<ArrayObjectAdapter>(SETTINGS_ADAPTER)?.setItems(
             buildSettingsRowItems(viewState.indexInProgress, viewState.scanInProgress),
@@ -197,8 +192,12 @@ class TVHomeFragment : BrowseSupportFragment() {
         }
 
         if (includeSystems) {
-            val systemItems = ArrayObjectAdapter(SystemPresenter(cardSize, systemsCardPadding))
-            val title = resources.getString(R.string.tv_home_section_systems)
+            val profileSize = (120 * resources.displayMetrics.density).toInt()
+            val presenter = ClassPresenterSelector()
+            presenter.addClassPresenter(MetaSystemInfo::class.java, SystemPresenter(profileSize, systemsCardPadding))
+            presenter.addClassPresenter(TVSetting::class.java, SettingPresenter(profileSize, settingsCardPadding))
+            val systemItems = ArrayObjectAdapter(presenter)
+            val title = getString(R.string.alexretro_consoles)
             result.add(ListRow(HeaderItem(SYSTEM_ADAPTER, title), systemItems))
         }
 
@@ -261,6 +260,7 @@ class TVHomeFragment : BrowseSupportFragment() {
                     newItem: Any,
                 ): Boolean {
                     return when {
+                        (oldItem is MetaSystemInfo && newItem is MetaSystemInfo) -> oldItem == newItem
                         (oldItem is Game && newItem is Game) -> {
                             LEANBACK_GAME_DIFF_CALLBACK.areContentsTheSame(oldItem, newItem)
                         }
@@ -276,6 +276,8 @@ class TVHomeFragment : BrowseSupportFragment() {
                     newItem: Any,
                 ): Boolean {
                     return when {
+                        (oldItem is MetaSystemInfo && newItem is MetaSystemInfo) ->
+                            oldItem.metaSystem == newItem.metaSystem
                         (oldItem is Game && newItem is Game) -> {
                             LEANBACK_GAME_DIFF_CALLBACK.areItemsTheSame(oldItem, newItem)
                         }

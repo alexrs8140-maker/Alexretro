@@ -41,6 +41,9 @@ class TVGamesFragment : VerticalGridSupportFragment() {
     ) {
         super.onViewCreated(view, savedInstanceState)
 
+        title = getString(MetaSystemID.valueOf(args.metaSystemId).titleResId)
+        view.setBackgroundColor(android.graphics.Color.rgb(20, 20, 20))
+
         val factory = TVGamesViewModel.Factory(retrogradeDb)
         val gamesViewModel = ViewModelProvider(this, factory)[TVGamesViewModel::class.java]
 
