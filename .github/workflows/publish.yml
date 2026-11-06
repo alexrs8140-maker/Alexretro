@@ -2,6 +2,8 @@ name: Build AlexRetro APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [ master ]
 
 permissions:
   contents: write
@@ -46,6 +48,7 @@ jobs:
           cp lemuroid-app/build/outputs/apk/freeBundle/debug/*.apk AlexRetro-FireTV.apk
 
       - name: Publish APK for Fire TV Downloader
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

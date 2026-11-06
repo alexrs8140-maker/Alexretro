@@ -6,6 +6,8 @@ import android.os.Environment
 
 object TVHelper {
     fun isSAFSupported(context: Context): Boolean {
+        if (isFireTV(context)) return false
+
         val packageManager = context.packageManager
 
         val isStandardHardware =
@@ -20,6 +22,10 @@ object TVHelper {
 
         return isStandardHardware || isNotLegacyStorage
     }
+
+    fun isFireTV(context: Context): Boolean =
+        Build.MANUFACTURER.equals("Amazon", ignoreCase = true) &&
+            (isTV(context) || Build.MODEL.startsWith("AFT", ignoreCase = true))
 
     fun isTV(context: Context): Boolean {
         val packageManager = context.packageManager

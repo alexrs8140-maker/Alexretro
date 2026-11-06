@@ -83,7 +83,10 @@ class MainTVActivity : BaseTVActivity(), BusyActivity {
     }
 
     private fun ensureLegacyStoragePermissionsIfNeeded() {
-        if (TVHelper.isSAFSupported(this) || hasLegacyPermissions()) {
+        // The built-in picker requests all-files access on scoped-storage devices.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R ||
+            TVHelper.isSAFSupported(this) || hasLegacyPermissions()
+        ) {
             return
         }
 
