@@ -85,10 +85,4 @@ jobs:
           test "${#apks[@]}" -eq 1
           cp "${apks[0]}" AlexRetro-FireTV.apk
           sha256sum AlexRetro-FireTV.apk > AlexRetro-FireTV.apk.sha256
-          if ! gh release view alexretro-test-5c736349 >/dev/null 2>&1; then
-            gh release create alexretro-test-5c736349 \
-              --target 5c736349c1d21514f44c821f7914eb5deb1dee68 \
-              --prerelease --title "AlexRetro Fire TV — custom artwork and folder fix" \
-              --notes "Successful Build 10. Includes bundled cores, custom AlexRetro artwork, and Fire TV folder picker fixes. Personal test build; device testing still required."
-          fi
-          gh release upload alexretro-test-5c736349 AlexRetro-FireTV.apk AlexRetro-FireTV.apk.sha256 --clobber
+          gh release upload alexretro-firetv AlexRetro-FireTV.apk AlexRetro-FireTV.apk.sha256 --clobber
