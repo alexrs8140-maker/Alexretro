@@ -8,6 +8,7 @@ import android.os.Bundle
 import com.swordfish.lemuroid.R
 import com.swordfish.lemuroid.app.shared.library.LibraryIndexScheduler
 import com.swordfish.lemuroid.app.tv.folderpicker.TVFolderPickerLauncher
+import com.swordfish.lemuroid.app.tv.shared.TVHelper
 import com.swordfish.lemuroid.app.utils.android.displayErrorDialog
 import com.swordfish.lemuroid.lib.android.RetrogradeActivity
 import com.swordfish.lemuroid.lib.preferences.SharedPreferencesHelper
@@ -22,6 +23,11 @@ class StorageFrameworkPickerLauncher : RetrogradeActivity() {
         super.onCreate(savedInstanceState)
 
         if (savedInstanceState == null) {
+            if (TVHelper.isFireTV(this)) {
+                openTVFolderPickerFallback()
+                return
+            }
+
             val intent =
                 Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                     this.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
