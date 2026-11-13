@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alexretro_storage_access_title">Allow access to ROM folders</string>
+    <string name="alexretro_storage_access_message">This Android version requires All files access to browse ROMs on internal storage or USB. The ordinary Files and media permission may not include ROM files. Open storage settings, allow access for this app, then press Back.</string>
+    <string name="alexretro_open_storage_settings">Open storage settings</string>
+    <string name="alexretro_storage_settings_unavailable">This device could not open the All files access settings. This message will stay visible until you press OK. Please report this exact message and your Fire OS version so we can fix storage access for your device.</string>
+    <string name="alexretro_folder_unreadable_title">Cannot read this folder</string>
+    <string name="alexretro_folder_unreadable_message">The app cannot read %1$s. Check storage access and that your USB drive is connected. No folder selection has been saved.</string>
+</resources>

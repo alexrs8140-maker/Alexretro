@@ -292,7 +292,7 @@ class GameViewModelInput(
             combine(
                 inputDeviceManager.getGameShortcutsObservable(),
                 inputDeviceManager.getGamePadsPortMapperObservable(),
-                inputDeviceManager.getInputBindingsObservable(),
+                inputDeviceManager.getInputBindingsObservable(system.id.dbname),
                 filteredKeyEvents,
                 ::NTuple4,
             )

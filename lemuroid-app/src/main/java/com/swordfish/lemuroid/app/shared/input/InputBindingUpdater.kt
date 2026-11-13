@@ -5,13 +5,9 @@ import android.content.Intent
 import android.view.InputDevice
 import android.view.KeyEvent
 import com.swordfish.lemuroid.R
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
-@OptIn(DelicateCoroutinesApi::class)
 class InputBindingUpdater(private val inputDeviceManager: InputDeviceManager, intent: Intent) {
     val extras = parseExtras(intent)
 
@@ -41,16 +37,14 @@ class InputBindingUpdater(private val inputDeviceManager: InputDeviceManager, in
         if (!isTargetedDevice(event.device)) return false
 
         runBlocking {
-            GlobalScope.async {
-                inputDeviceManager.updateBinding(event.device, RetroKey(extras.retroKey), InputKey(event.keyCode))
-            }
+            inputDeviceManager.updateBinding(event.device, RetroKey(extras.retroKey), InputKey(event.keyCode), extras.systemId)
         }
 
         return true
     }
 
     private fun isTargetedDevice(device: InputDevice?): Boolean {
-        return device != null && extras.device.name == device.name
+        return device != null && extras.device.descriptor == device.descriptor
     }
 
     private fun parseExtras(intent: Intent): IntentExtras {
@@ -62,12 +56,13 @@ class InputBindingUpdater(private val inputDeviceManager: InputDeviceManager, in
             intent.extras?.getInt(REQUEST_RETRO_KEY)
                 ?: throw IllegalArgumentException("REQUEST_RETRO_KEY has not been passed")
 
-        return IntentExtras(device, retroKey)
+        return IntentExtras(device, retroKey, intent.getStringExtra(REQUEST_SYSTEM))
     }
 
-    data class IntentExtras(val device: InputDevice, val retroKey: Int)
+    data class IntentExtras(val device: InputDevice, val retroKey: Int, val systemId: String?)
 
     companion object {
+        const val REQUEST_SYSTEM = "REQUEST_SYSTEM"
         const val REQUEST_DEVICE = "REQUEST_DEVICE"
         const val REQUEST_RETRO_KEY = "REQUEST_RETRO_KEY"
     }

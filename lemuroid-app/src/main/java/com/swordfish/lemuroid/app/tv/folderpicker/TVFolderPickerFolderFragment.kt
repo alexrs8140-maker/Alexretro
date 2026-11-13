@@ -1,6 +1,7 @@
 package com.swordfish.lemuroid.app.tv.folderpicker
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.NonNull
@@ -57,7 +58,7 @@ class TVFolderPickerFolderFragment : GuidedStepSupportFragment() {
     ) {
         super.onCreateActions(actions, savedInstanceState)
 
-        directory.listFiles()
+        runCatching { directory.listFiles() }.getOrNull()
             ?.filter { it.isDirectory }
             ?.forEach {
                 addAction(actions, ACTION_NAVIGATE, it.name, it.absolutePath)
@@ -67,6 +68,14 @@ class TVFolderPickerFolderFragment : GuidedStepSupportFragment() {
     override fun onGuidedActionClicked(action: GuidedAction) {
         when (action.id) {
             ACTION_CHOOSE -> {
+                if (runCatching { directory.listFiles() }.getOrNull() == null) {
+                    AlertDialog.Builder(requireContext())
+                        .setTitle(R.string.alexretro_folder_unreadable_title)
+                        .setMessage(getString(R.string.alexretro_folder_unreadable_message, directory.absolutePath))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                    return
+                }
                 val resultIntent =
                     Intent().apply {
                         putExtra(TVFolderPickerActivity.RESULT_DIRECTORY_PATH, directory.absolutePath)

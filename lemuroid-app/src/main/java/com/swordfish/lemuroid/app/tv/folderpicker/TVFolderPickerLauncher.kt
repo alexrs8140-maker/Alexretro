@@ -32,9 +32,14 @@ class TVFolderPickerLauncher : ImmersiveActivity() {
             val currentValue: String? = sharedPreferences.getString(preferenceKey, null)
             val newValue = resultData?.extras?.getString(TVFolderPickerActivity.RESULT_DIRECTORY_PATH)
 
-            if (newValue.toString() != currentValue) {
+            if (newValue.isNullOrBlank()) {
+                finish()
+                return
+            }
+
+            if (newValue != currentValue) {
                 sharedPreferences.edit().apply {
-                    this.putString(preferenceKey, newValue.toString())
+                    this.putString(preferenceKey, newValue)
                     this.commit()
                 }
             }

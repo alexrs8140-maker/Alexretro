@@ -5,6 +5,11 @@ import android.content.Intent
 import android.view.InputDevice
 import android.view.KeyEvent
 import androidx.preference.Preference
+import androidx.preference.ListPreference
+import com.swordfish.lemuroid.lib.library.SystemID
+import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.FragmentActivity
+import kotlinx.coroutines.launch
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreference
@@ -20,6 +25,17 @@ import com.swordfish.lemuroid.app.tv.input.TVGamePadBindingActivity
 import com.swordfish.lemuroid.app.tv.input.TVGamePadShortcutBindingActivity
 
 class GamePadPreferencesHelper(private val inputDeviceManager: InputDeviceManager) {
+    private fun findActivity(context: Context): FragmentActivity? {
+        var current = context
+        while (current is android.content.ContextWrapper) {
+            if (current is FragmentActivity) return current
+            current = current.baseContext
+        }
+        return null
+    }
+
+    private var selectedSystem: String? = null
+
     suspend fun addGamePadsPreferencesToScreen(
         context: Context,
         preferenceScreen: PreferenceScreen,
@@ -29,6 +45,30 @@ class GamePadPreferencesHelper(private val inputDeviceManager: InputDeviceManage
         val distinctGamePads = getDistinctGamePads(gamePads)
         val distinctEnabledGamePads = getDistinctGamePads(enabledGamePads)
 
+        val scope = ListPreference(context).apply {
+            title = "Mapping profile"
+            entries = arrayOf("Default — all consoles") + SystemID.entries.map { it.name.replace('_', ' ') }
+            entryValues = arrayOf("") + SystemID.entries.map { it.dbname }
+            value = selectedSystem ?: ""
+            isPersistent = false
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setOnPreferenceChangeListener { _, value ->
+                selectedSystem = value.toString().ifEmpty { null }
+                findActivity(context)?.lifecycleScope?.launch {
+                    preferenceScreen.removeAll()
+                    addGamePadsPreferencesToScreen(context, preferenceScreen, gamePads, enabledGamePads)
+                }
+                true
+            }
+        }
+        preferenceScreen.addPreference(scope)
+        if (gamePads.isEmpty()) {
+            preferenceScreen.addPreference(Preference(context).apply {
+                title = "Connect a controller"
+                summary = "Pair your controller in Fire TV settings, then return here to map its buttons."
+                isSelectable = false
+            })
+        }
         addEnabledCategory(context, preferenceScreen, distinctGamePads)
 
         distinctEnabledGamePads
@@ -106,6 +146,17 @@ class GamePadPreferencesHelper(private val inputDeviceManager: InputDeviceManage
         val category = createCategory(context, preferenceScreen, inputDevice.name)
         preferenceScreen.addPreference(category)
 
+        category.addPreference(Preference(context).apply {
+            title = if (selectedSystem == null) "Restore original controls" else "Use default mapping"
+            summary = if (selectedSystem == null) "Reset this controller only" else "Remove this console override for this controller"
+            setOnPreferenceClickListener {
+                findActivity(context)?.lifecycleScope?.launch {
+                    inputDeviceManager.resetMapping(inputDevice, selectedSystem)
+                    refreshPreferenceCategoryForInputDevice(preferenceScreen, inputDevice)
+                }
+                true
+            }
+        })
         inputDevice.getLemuroidInputDevice().getCustomizableKeys()
             .map { buildKeyBindingPreference(context, inputDevice, it) }
             .forEach { category.addPreference(it) }
@@ -120,7 +171,7 @@ class GamePadPreferencesHelper(private val inputDeviceManager: InputDeviceManage
         inputDevice: InputDevice,
     ) {
         val inverseBindings =
-            inputDeviceManager.getCurrentBindings(inputDevice)
+            inputDeviceManager.getCurrentBindings(inputDevice, selectedSystem)
                 .map { it.value to it.key }
                 .toMap()
 
@@ -187,6 +238,7 @@ class GamePadPreferencesHelper(private val inputDeviceManager: InputDeviceManage
             Intent(context, TVGamePadBindingActivity::class.java).apply {
                 putExtra(InputBindingUpdater.REQUEST_DEVICE, inputDevice)
                 putExtra(InputBindingUpdater.REQUEST_RETRO_KEY, retroKey)
+                putExtra(InputBindingUpdater.REQUEST_SYSTEM, selectedSystem)
             }
         context.startActivity(intent)
     }
