@@ -38,10 +38,10 @@ class InputDeviceManager(
 
     private val flowSharedPreferences by lazy { FlowSharedPreferences(sharedPreferences) }
 
-    fun getInputBindingsObservable(): Flow<(InputDevice?) -> Map<InputKey, RetroKey>> {
+    fun getInputBindingsObservable(systemId: String? = null): Flow<(InputDevice?) -> Map<InputKey, RetroKey>> {
         return getEnabledInputsObservable()
             .flatMapLatest { devices ->
-                val allDeviceBindingsFlows = devices.map { device -> getBindingsFlow(device).map { device to it } }
+                val allDeviceBindingsFlows = devices.map { device -> getBindingsFlow(device, systemId).map { device to it } }
                 combine(allDeviceBindingsFlows) { it.toMap() }
             }
             .map { bindings -> { bindings[it] ?: mapOf() } }
@@ -65,7 +65,15 @@ class InputDeviceManager(
         }
     }
 
-    private fun getBindingsFlow(inputDevice: InputDevice): Flow<Map<InputKey, RetroKey>> {
+    private fun getBindingsFlow(inputDevice: InputDevice, systemId: String? = null): Flow<Map<InputKey, RetroKey>> {
+        if (systemId != null) {
+            return combine(
+                getBindingsFlow(inputDevice),
+                flowSharedPreferences.getString(computeKeyBindingGamePadPreference(inputDevice, systemId)).asFlow(),
+            ) { defaults, override ->
+                if (override.isEmpty()) defaults else parseBindingsPreference(override, inputDevice)
+            }
+        }
         return flowSharedPreferences.getString(computeKeyBindingGamePadPreference(inputDevice))
             .asFlow()
             .map { parseBindingsPreference(it, inputDevice) }
@@ -100,14 +108,14 @@ class InputDeviceManager(
         }
     }
 
-    suspend fun getCurrentBindings(inputDevice: InputDevice): Map<InputKey, RetroKey> {
+    suspend fun getCurrentBindings(inputDevice: InputDevice, systemId: String? = null): Map<InputKey, RetroKey> {
         return withContext(Dispatchers.IO) {
             val preference =
                 sharedPreferences.getString(
-                    computeKeyBindingGamePadPreference(inputDevice),
+                    computeKeyBindingGamePadPreference(inputDevice, systemId),
                     "",
                 )
-            parseBindingsPreference(preference, inputDevice)
+            if (preference.isNullOrEmpty() && systemId != null) getCurrentBindings(inputDevice) else parseBindingsPreference(preference, inputDevice)
         }
     }
 
@@ -137,9 +145,10 @@ class InputDeviceManager(
         inputDevice: InputDevice,
         retroKey: RetroKey,
         inputKey: InputKey,
+        systemId: String? = null,
     ) = withContext(Dispatchers.IO) {
         val prevBindings =
-            getCurrentBindings(inputDevice).entries
+            getCurrentBindings(inputDevice, systemId).entries
                 .map { it.key to it.value }
                 .filter { (_, value) -> value != retroKey }
 
@@ -148,7 +157,7 @@ class InputDeviceManager(
         val sharedPreferencesContent = Json.encodeToString(bindingsMapSerializer, bindings.toMap())
 
         sharedPreferences.edit(commit = true) {
-            putString(computeKeyBindingGamePadPreference(inputDevice), sharedPreferencesContent)
+            putString(computeKeyBindingGamePadPreference(inputDevice, systemId), sharedPreferencesContent)
         }
     }
 
@@ -163,6 +172,13 @@ class InputDeviceManager(
             putString(key, value)
         }
     }
+
+    suspend fun resetMapping(inputDevice: InputDevice, systemId: String?) =
+        withContext(Dispatchers.IO) {
+            sharedPreferences.edit(commit = true) {
+                remove(computeKeyBindingGamePadPreference(inputDevice, systemId))
+            }
+        }
 
     suspend fun resetAllBindings() =
         withContext(Dispatchers.IO) {
@@ -267,8 +283,9 @@ class InputDeviceManager(
             type: GameShortcutType,
         ) = "${GAME_PAD_BINDING_PREFERENCE_BASE_KEY}_${getSharedPreferencesId(inputDevice)}_shortcut_$type."
 
-        fun computeKeyBindingGamePadPreference(inputDevice: InputDevice) =
-            "${GAME_PAD_BINDING_PREFERENCE_BASE_KEY}_${getSharedPreferencesId(inputDevice)}"
+        fun computeKeyBindingGamePadPreference(inputDevice: InputDevice, systemId: String? = null) =
+            "${GAME_PAD_BINDING_PREFERENCE_BASE_KEY}_${getSharedPreferencesId(inputDevice)}" +
+                (systemId?.let { "_console_$it" } ?: "")
 
         fun computeKeyBindingRetroKeyPreference(
             inputDevice: InputDevice,

@@ -96,6 +96,10 @@ class TVHomeFragment : BrowseSupportFragment() {
         savedInstanceState: Bundle?,
     ) {
         super.onViewCreated(view, savedInstanceState)
+        title = "AlexRetro"
+        brandColor = android.graphics.Color.rgb(13, 20, 40)
+        searchAffordanceColor = android.graphics.Color.rgb(0, 218, 235)
+        view.setBackgroundColor(android.graphics.Color.rgb(6, 10, 24))
 
         recreateAdapter(
             includeFavorites = false,
@@ -181,6 +185,11 @@ class TVHomeFragment : BrowseSupportFragment() {
                 com.swordfish.lemuroid.lib.R.dimen.settings_card_padding,
             )
 
+        if (includeSystems) {
+            val systemItems = ArrayObjectAdapter(SystemPresenter(cardSize, systemsCardPadding))
+            result.add(ListRow(HeaderItem(SYSTEM_ADAPTER, "Choose your console"), systemItems))
+        }
+
         if (includeFavorites) {
             val presenter = ClassPresenterSelector()
             presenter.addClassPresenter(Game::class.java, GamePresenter(cardSize, gameInteractor))
@@ -196,11 +205,6 @@ class TVHomeFragment : BrowseSupportFragment() {
             result.add(ListRow(HeaderItem(RECENTS_ADAPTER, title), recentItems))
         }
 
-        if (includeSystems) {
-            val systemItems = ArrayObjectAdapter(SystemPresenter(cardSize, systemsCardPadding))
-            val title = resources.getString(R.string.tv_home_section_systems)
-            result.add(ListRow(HeaderItem(SYSTEM_ADAPTER, title), systemItems))
-        }
 
         val settingsItems = ArrayObjectAdapter(SettingPresenter(cardSize, settingsCardPadding))
         settingsItems.setItems(

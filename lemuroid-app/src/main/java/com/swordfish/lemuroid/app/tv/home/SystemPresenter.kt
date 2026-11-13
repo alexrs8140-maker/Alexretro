@@ -29,6 +29,13 @@ class SystemPresenter(private val cardSize: Int, private val cardPadding: Int) :
 
     override fun onCreateViewHolder(parent: ViewGroup): Presenter.ViewHolder {
         val cardView = ImageCardView(parent.context)
+        cardView.setBackgroundColor(Color.rgb(18, 26, 46))
+        cardView.setInfoAreaBackgroundColor(Color.rgb(18, 26, 46))
+        cardView.setOnFocusChangeListener { view, focused ->
+            (view as ImageCardView).setInfoAreaBackgroundColor(
+                if (focused) Color.rgb(113, 16, 104) else Color.rgb(18, 26, 46),
+            )
+        }
         cardView.isFocusable = true
         cardView.isFocusableInTouchMode = true
         (cardView.findViewById<View>(androidx.leanback.R.id.content_text) as TextView).setTextColor(Color.LTGRAY)
