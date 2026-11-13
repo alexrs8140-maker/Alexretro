@@ -70,8 +70,8 @@ class InputDeviceManager(
             return combine(
                 getBindingsFlow(inputDevice),
                 flowSharedPreferences.getString(computeKeyBindingGamePadPreference(inputDevice, systemId)).asFlow(),
-            ) { defaults, override ->
-                if (override.isEmpty()) defaults else parseBindingsPreference(override, inputDevice)
+            ) { defaults, consoleMapping ->
+                if (consoleMapping.isEmpty()) defaults else parseBindingsPreference(consoleMapping, inputDevice)
             }
         }
         return flowSharedPreferences.getString(computeKeyBindingGamePadPreference(inputDevice))
